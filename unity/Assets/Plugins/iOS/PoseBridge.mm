@@ -87,8 +87,6 @@ static int gOrient = 0, gMiss = 0, gDetections = 0;
   VNImageRequestHandler *h = [[VNImageRequestHandler alloc] initWithCVPixelBuffer:px orientation:kOrients[gOrient] options:@{}];
   if (![h performRequests:@[ self.request ] error:nil]) return;
   VNHumanBodyPoseObservation *obs = (VNHumanBodyPoseObservation *)self.request.results.firstObject;
-  if (obs) { gMiss = 0; gDetections++; }
-  else if (++gMiss >= 12) { gMiss = 0; gOrient = (gOrient + 1) % 4; } // try the next rotation
   float buf[1 + kJoints * 3] = {0};
   buf[0] = (float)CACurrentMediaTime();
   if (obs) {
@@ -109,6 +107,12 @@ static int gOrient = 0, gMiss = 0, gDetections = 0;
       }
     }
   }
+  // Judge the rotation by body quality, not just "a person": need most joints at decent confidence.
+  int good = 0;
+  for (int i = 0; i < kJoints; i++) if (buf[3 + i * 3] > 0.3f) good++;
+  if (obs) gDetections++;
+  if (good >= 7) gMiss = 0;
+  else if (++gMiss >= 15) { gMiss = 0; gOrient = (gOrient + 1) % 4; } // try the next quarter turn
   [gLock lock];
   memcpy(gLatest, buf, sizeof(buf));
   [gLock unlock];
