@@ -15,7 +15,7 @@ dependencies {
     implementation "androidx.camera:camera-core:$camerax"
     implementation "androidx.camera:camera-camera2:$camerax"
     implementation "androidx.camera:camera-lifecycle:$camerax"
-    implementation "com.google.mlkit:pose-detection:18.0.0-beta5"
+    implementation "com.google.mediapipe:tasks-vision:0.10.14"
     // align kotlin-stdlib-jdk7/jdk8 with kotlin-stdlib to avoid duplicate classes
     implementation platform("org.jetbrains.kotlin:kotlin-bom:1.8.22")
 }

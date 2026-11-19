@@ -171,7 +171,6 @@ public static class BuildScript
         string projPath = PBXProject.GetPBXProjectPath(path);
         var proj = new PBXProject(); proj.ReadFromFile(projPath);
         string fw = proj.GetUnityFrameworkTargetGuid();
-        proj.AddFrameworkToProject(fw, "Vision.framework", false);
         proj.AddFrameworkToProject(fw, "AVFoundation.framework", false);
         proj.AddFrameworkToProject(fw, "CoreMedia.framework", false);
         proj.AddFrameworkToProject(fw, "CoreVideo.framework", false);
@@ -181,6 +180,13 @@ public static class BuildScript
             proj.SetBuildProperty(g, "CODE_SIGNING_ALLOWED", "NO");
         }
         proj.WriteToFile(projPath);
+
+        // Google MediaPipe Pose Landmarker (CocoaPods; `pod install` runs in CI before xcodebuild)
+        File.WriteAllText(Path.Combine(path, "Podfile"),
+            "platform :ios, '15.0'\n" +
+            "use_frameworks! :linkage => :static\n" +
+            "target 'UnityFramework' do\n  pod 'MediaPipeTasksVision', '0.10.14'\nend\n" +
+            "target 'Unity-iPhone' do\nend\n");
 
         var plistPath = Path.Combine(path, "Info.plist");
         var plist = new PlistDocument(); plist.ReadFromFile(plistPath);

@@ -60,10 +60,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: xcode-project }
       - run: mkdir xc && tar -xzf xcode.tgz -C xc
+      - name: Install MediaPipe pods
+        run: cd xc && pod install --repo-update
       - name: Build unsigned app
         run: |
           cd xc
-          xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos \
+          xcodebuild -workspace Unity-iPhone.xcworkspace -scheme Unity-iPhone -configuration Release -sdk iphoneos \
             -derivedDataPath dd CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -40
           test -d dd/Build/Products/Release-iphoneos/*.app
       - name: Package IPA

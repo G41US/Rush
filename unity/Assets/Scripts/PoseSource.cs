@@ -45,6 +45,9 @@ public static class PoseSource
 #if UNITY_IOS && !UNITY_EDITOR
             int v = PB_Info();
             return $"rotation {v / 1000000 * 90}° · person found {v % 1000000}× · joints {seen}/13";
+#elif UNITY_ANDROID && !UNITY_EDITOR
+            int d = bridge != null ? bridge.CallStatic<int>("getDetections") : 0;
+            return $"person found {d}× · joints {seen}/13";
 #else
             return $"joints {seen}/13";
 #endif
