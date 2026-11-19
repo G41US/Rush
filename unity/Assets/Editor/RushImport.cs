@@ -35,7 +35,6 @@ public class RushImport : AssetPostprocessor
         bool isCharacter = assetPath.EndsWith("Remy.fbx");
         mi.importAnimation = !isCharacter;
         mi.materialImportMode = isCharacter ? ModelImporterMaterialImportMode.ImportViaMaterialDescription : ModelImporterMaterialImportMode.None;
-        if (!isCharacter) mi.importMaterials = false;
     }
 
     void OnPreprocessAnimation()
