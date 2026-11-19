@@ -1,0 +1,74 @@
+name: Unity build (APK + IPA)
+on:
+  push:
+    paths: ["unity/**", ".github/workflows/unity.yml"]
+  workflow_dispatch:
+
+env:
+  UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+  UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+  UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with: { android: true, dotnet: true, haskell: true, large-packages: false, swap-storage: false }
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: unity/Library
+          key: Library-Android-${{ hashFiles('unity/Assets/**', 'unity/Packages/**', 'unity/ProjectSettings/**') }}
+          restore-keys: Library-Android-
+      - uses: game-ci/unity-builder@v4
+        with:
+          projectPath: unity
+          targetPlatform: Android
+          buildMethod: BuildScript.Build
+          buildName: RailRush
+          androidExportType: androidPackage
+      - uses: actions/upload-artifact@v4
+        with: { name: railrush-unity-apk, path: build/Android/*.apk }
+
+  ios-xcode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with: { android: true, dotnet: true, haskell: true, large-packages: false, swap-storage: false }
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: unity/Library
+          key: Library-iOS-${{ hashFiles('unity/Assets/**', 'unity/Packages/**', 'unity/ProjectSettings/**') }}
+          restore-keys: Library-iOS-
+      - uses: game-ci/unity-builder@v4
+        with:
+          projectPath: unity
+          targetPlatform: iOS
+          buildMethod: BuildScript.Build
+          buildName: RailRush
+      - name: Pack Xcode project
+        run: sudo tar -czf xcode.tgz -C build/iOS/RailRush .
+      - uses: actions/upload-artifact@v4
+        with: { name: xcode-project, path: xcode.tgz, retention-days: 2 }
+
+  ipa:
+    needs: ios-xcode
+    runs-on: macos-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: xcode-project }
+      - run: mkdir xc && tar -xzf xcode.tgz -C xc
+      - name: Build unsigned app
+        run: |
+          cd xc
+          xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -sdk iphoneos \
+            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -40
+          test -d dd/Build/Products/Release-iphoneos/*.app
+      - name: Package IPA
+        run: |
+          mkdir Payload && cp -R xc/dd/Build/Products/Release-iphoneos/*.app Payload/
+          zip -qr RailRush-Unity-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with: { name: railrush-unity-ipa, path: RailRush-Unity-unsigned.ipa }
