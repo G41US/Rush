@@ -1,8 +1,11 @@
 name: Build IPA (unsigned)
-on: [push, workflow_dispatch]
+on:
+  push:
+    paths-ignore: [".github/workflows/android.yml"]
+  workflow_dispatch:
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
