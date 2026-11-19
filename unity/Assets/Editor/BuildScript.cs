@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using UnityEditor.Animations;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
@@ -48,6 +50,9 @@ public static class BuildScript
         sky.SetColor("_SkyTint", new Color(0.45f, 0.7f, 1f)); sky.SetColor("_GroundColor", new Color(0.55f, 0.6f, 0.68f)); sky.SetFloat("_Exposure", 1.35f);
         SaveMat("Assets/Resources/SkyMat.mat", sky);
 
+        BuildArtMaterials();
+        BuildRunnerPrefab();
+
         // ---- scene (empty: RushGame bootstraps itself)
         Directory.CreateDirectory("Assets/Scenes");
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -80,6 +85,69 @@ public static class BuildScript
         PlayerSettings.iOS.requiresFullScreen = true;
         PlayerSettings.iOS.appleEnableAutomaticSigning = false;
         AssetDatabase.SaveAssets();
+    }
+
+    // ---- Realistic PBR materials from Poly Haven textures (Assets/Art/Textures/<role>/<role>_albedo|normal|rough.jpg)
+    static void BuildArtMaterials()
+    {
+        if (!Directory.Exists("Assets/Art/Textures")) return;
+        var std = Shader.Find("Standard");
+        foreach (var dir in Directory.GetDirectories("Assets/Art/Textures"))
+        {
+            string role = Path.GetFileName(dir);
+            string albedo = $"{dir}/{role}_albedo.jpg", normal = $"{dir}/{role}_normal.jpg", rough = $"{dir}/{role}_rough.jpg", ms = $"{dir}/{role}_ms.png";
+            bool metal = role == "rail" || role == "metal";
+            // Standard shader wants metallic in R and smoothness (1 - roughness) in A
+            if (File.Exists(rough) && !File.Exists(ms))
+            {
+                var src = new Texture2D(2, 2); src.LoadImage(File.ReadAllBytes(rough));
+                var px = src.GetPixels32();
+                for (int i = 0; i < px.Length; i++) { byte r = px[i].r; px[i] = new Color32(metal ? (byte)180 : (byte)0, 0, 0, (byte)(255 - r)); }
+                var dst = new Texture2D(src.width, src.height, TextureFormat.RGBA32, true); dst.SetPixels32(px); dst.Apply();
+                File.WriteAllBytes(ms, dst.EncodeToPNG());
+                AssetDatabase.ImportAsset(ms);
+            }
+            var m = new Material(std);
+            var a = AssetDatabase.LoadAssetAtPath<Texture2D>(albedo); if (a) m.SetTexture("_MainTex", a);
+            var n = AssetDatabase.LoadAssetAtPath<Texture2D>(normal);
+            if (n) { m.SetTexture("_BumpMap", n); m.EnableKeyword("_NORMALMAP"); m.SetFloat("_BumpScale", 1f); }
+            var g = AssetDatabase.LoadAssetAtPath<Texture2D>(ms);
+            if (g) { m.SetTexture("_MetallicGlossMap", g); m.EnableKeyword("_METALLICGLOSSMAP"); m.SetFloat("_GlossMapScale", metal ? 0.9f : 0.7f); }
+            m.enableInstancing = true;
+            SaveMat($"Assets/Resources/Mat_{role}.mat", m);
+        }
+        if (File.Exists("Assets/Art/Sky/sky.hdr"))
+        {
+            var sky = new Material(Shader.Find("Skybox/Panoramic"));
+            sky.SetTexture("_MainTex", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Sky/sky.hdr"));
+            sky.SetFloat("_Exposure", 1.1f);
+            SaveMat("Assets/Resources/SkyHdri.mat", sky);
+        }
+    }
+
+    // ---- Mixamo runner: humanoid Remy + Run/Jump/Slide/Stumble/Idle states, saved as Resources/Runner.prefab
+    static void BuildRunnerPrefab()
+    {
+        const string dir = "Assets/Art/Characters/Remy";
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>($"{dir}/Remy.fbx");
+        if (model == null) { Debug.LogWarning("Remy.fbx missing; using primitive runner"); return; }
+        const string ctrlPath = "Assets/Resources/RunnerAnim.controller";
+        if (File.Exists(ctrlPath)) AssetDatabase.DeleteAsset(ctrlPath);
+        var ctrl = AnimatorController.CreateAnimatorControllerAtPath(ctrlPath);
+        var sm = ctrl.layers[0].stateMachine;
+        foreach (var name in new[] { "Run", "Jump", "Slide", "Stumble", "Idle" })
+        {
+            var clip = AssetDatabase.LoadAllAssetsAtPath($"{dir}/{name}.fbx").OfType<AnimationClip>().FirstOrDefault(c => !c.name.StartsWith("__preview"));
+            if (clip == null) { Debug.LogWarning("Missing clip " + name); continue; }
+            var st = sm.AddState(name); st.motion = clip;
+            if (name == "Run") sm.defaultState = st;
+        }
+        var inst = (GameObject)PrefabUtility.InstantiatePrefab(model);
+        var anim = inst.GetComponent<Animator>(); if (anim == null) anim = inst.AddComponent<Animator>();
+        anim.runtimeAnimatorController = ctrl; anim.applyRootMotion = false; anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        foreach (var r in inst.GetComponentsInChildren<SkinnedMeshRenderer>()) { r.updateWhenOffscreen = true; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On; }
+        PrefabUtility.SaveAsPrefabAsset(inst, "Assets/Resources/Runner.prefab");
+        UnityEngine.Object.DestroyImmediate(inst);
     }
 
     static void SaveMat(string path, Material m)

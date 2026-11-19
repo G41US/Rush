@@ -36,6 +36,21 @@ public class RushWorld : MonoBehaviour
         return m;
     }
 
+    readonly Dictionary<string, Material> tmats = new Dictionary<string, Material>();
+    /// Realistic PBR material (Poly Haven) with tiling; falls back to a flat colour if the art is missing.
+    public Material TMat(string role, Vector2 tiling, Color tint, Color fallback)
+    {
+        string key = $"{role}|{tiling.x:0.0}|{tiling.y:0.0}|{ColorUtility.ToHtmlStringRGB(tint)}";
+        if (tmats.TryGetValue(key, out var m)) return m;
+        var src = Resources.Load<Material>("Mat_" + role);
+        if (src == null) return Mat(fallback);
+        m = new Material(src) { color = tint, enableInstancing = true };
+        m.mainTextureScale = tiling;
+        tmats[key] = m; return m;
+    }
+
+    public Animator runnerAnim; string animState = "";
+
     static Color Hex(string h) { ColorUtility.TryParseHtmlString(h, out var c); return c; }
 
     Transform Prim(PrimitiveType t, Transform parent, Vector3 pos, Vector3 scale, Material m, bool shadows = true)
@@ -52,15 +67,26 @@ public class RushWorld : MonoBehaviour
     public void Build()
     {
         baseMat = Resources.Load<Material>("BaseMat") ?? new Material(Shader.Find("Standard"));
-        var sky = Resources.Load<Material>("SkyMat");
+        var sky = Resources.Load<Material>("SkyHdri") ?? Resources.Load<Material>("SkyMat");
         if (sky != null) { RenderSettings.skybox = sky; }
         RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.fogColor = Hex("#bfe6ff"); RenderSettings.fogStartDistance = 60; RenderSettings.fogEndDistance = 160;
-        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-        RenderSettings.ambientSkyColor = Hex("#cfe8ff"); RenderSettings.ambientEquatorColor = Hex("#e8dcc8"); RenderSettings.ambientGroundColor = Hex("#6b6f80");
+        RenderSettings.fogColor = Hex("#c9d3dc");
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
+        RenderSettings.ambientIntensity = 1.1f;
+        RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
+        DynamicGI.UpdateEnvironment();
+        // realtime reflection probe so metal/wet surfaces reflect the sky
+        var probe = new GameObject("Reflections").AddComponent<ReflectionProbe>();
+        probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
+        probe.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
+        probe.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
+        probe.size = new Vector3(400, 200, 400); probe.transform.position = new Vector3(0, 6, 10);
+        probe.cullingMask = 0; probe.clearFlags = UnityEngine.Rendering.ReflectionProbeClearFlags.Skybox; probe.resolution = 128;
+        probe.RenderProbe();
 
         var sun = new GameObject("Sun").AddComponent<Light>();
-        sun.type = LightType.Directional; sun.color = Hex("#fff3e0"); sun.intensity = 1.25f;
+        sun.type = LightType.Directional; sun.color = Hex("#fff1dc"); sun.intensity = 1.4f;
         sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.55f;
         sun.transform.rotation = Quaternion.Euler(48, -35, 0);
         QualitySettings.shadowDistance = 45;
@@ -78,10 +104,10 @@ public class RushWorld : MonoBehaviour
     {
         var rnd = new System.Random(seed * 31 + 5);
         var g = new GameObject("Seg").transform; g.SetParent(transform);
-        var ground = Mat(Hex("#a8a29e"), 0.1f);
-        var gravel = Mat(Hex("#8b7d6b"), 0.05f);
-        var sleeper = Mat(Hex("#6b4f3a"), 0.1f);
-        var rail = Mat(Hex("#d6d9de"), 0.8f, 0.6f);
+        var ground = TMat("ground", new Vector2(4, 7), Color.white, Hex("#a8a29e"));
+        var gravel = TMat("ballast", new Vector2(1, 10), Color.white, Hex("#8b7d6b"));
+        var sleeper = TMat("sleeper", new Vector2(1, 0.25f), Hex("#d8cfc4"), Hex("#6b4f3a"));
+        var rail = TMat("rail", new Vector2(0.1f, 12), Color.white, Hex("#d6d9de"));
         Prim(PrimitiveType.Cube, g, new Vector3(0, -0.25f, SegLen / 2), new Vector3(LaneW * 3 + 6, 0.5f, SegLen), ground, false);
         for (int l = -1; l <= 1; l++)
         {
@@ -92,14 +118,14 @@ public class RushWorld : MonoBehaviour
             foreach (float o in new[] { -0.6f, 0.6f })
                 Prim(PrimitiveType.Cube, g, new Vector3(x + o, 0.17f, SegLen / 2), new Vector3(0.09f, 0.12f, SegLen), rail, false);
         }
-        Color[] walls = { Hex("#7cc4ff"), Hex("#ffd166") };
+        Color[] walls = { Hex("#b9c3cc"), Hex("#d9cfbf") };
         Color[] bld = { Hex("#ff8fa3"), Hex("#9db4ff"), Hex("#ffd6a5"), Hex("#a0e7a0"), Hex("#f5a3ff"), Hex("#ffb4a2"), Hex("#90dbf4") };
         var win = Mat(Hex("#28406e"), 0.9f, 0.2f);
         var roofM = Mat(Hex("#5c5470"), 0.2f);
         for (int side = -1; side <= 1; side += 2)
         {
             float wx = side * (LaneW * 1.5f + 2.2f);
-            Prim(PrimitiveType.Cube, g, new Vector3(wx, 1.1f, SegLen / 2), new Vector3(0.7f, 2.2f, SegLen), Mat(walls[side < 0 ? 0 : 1], 0.3f));
+            Prim(PrimitiveType.Cube, g, new Vector3(wx, 1.1f, SegLen / 2), new Vector3(0.7f, 2.2f, SegLen), TMat("wall", new Vector2(8, 1), walls[side < 0 ? 0 : 1], walls[side < 0 ? 0 : 1]));
             Prim(PrimitiveType.Cube, g, new Vector3(wx, 2.25f, SegLen / 2), new Vector3(0.9f, 0.12f, SegLen), Mat(Color.white, 0.4f));
             // lamp post
             var pole = Mat(Hex("#3d3d4a"), 0.5f, 0.4f);
@@ -109,7 +135,9 @@ public class RushWorld : MonoBehaviour
             {
                 float h = 6 + (float)rnd.NextDouble() * 16, w = 5 + (float)rnd.NextDouble() * 2.5f;
                 float bx = side * (LaneW * 1.5f + 5.5f + (float)rnd.NextDouble() * 2.5f);
-                var b = Prim(PrimitiveType.Cube, g, new Vector3(bx, h / 2, z + 3), new Vector3(w, h, 6.5f), Mat(bld[rnd.Next(bld.Length)], 0.25f));
+                var tint = Color.Lerp(Color.white, bld[rnd.Next(bld.Length)], 0.25f);
+                var b = Prim(PrimitiveType.Cube, g, new Vector3(bx, h / 2, z + 3), new Vector3(w, h, 6.5f),
+                    TMat(rnd.Next(2) == 0 ? "brick" : "brick2", new Vector2(2, Mathf.Round(h / 3)), tint, bld[rnd.Next(bld.Length)]));
                 Prim(PrimitiveType.Cube, g, new Vector3(bx, h + 0.2f, z + 3), new Vector3(w + 0.3f, 0.4f, 6.8f), roofM);
                 float face = bx - side * (w / 2 + 0.01f);
                 for (float wy = 2; wy < h - 1; wy += 2.4f)
@@ -139,6 +167,14 @@ public class RushWorld : MonoBehaviour
         legR = Limb(runner, new Vector3(0.15f, 0.95f, 0), pants, shoe, 0.82f, 0.19f, sole);
         shadow = Prim(PrimitiveType.Cylinder, runner, new Vector3(0, 0.03f, 0), new Vector3(0.9f, 0.005f, 0.9f), Mat(new Color(0, 0, 0, 1), 0f), false);
         shadow.gameObject.SetActive(false);
+        var prefab = Resources.Load<GameObject>("Runner");
+        if (prefab != null)
+        {
+            var model = Instantiate(prefab, runner);
+            model.transform.localPosition = Vector3.zero; model.transform.localRotation = Quaternion.identity;
+            runnerAnim = model.GetComponent<Animator>();
+            body.gameObject.SetActive(false); legL.gameObject.SetActive(false); legR.gameObject.SetActive(false);
+        }
     }
 
     Transform Limb(Transform parent, Vector3 pivot, Material upper, Material end, float len, float thick, Material extra = null)
@@ -158,6 +194,19 @@ public class RushWorld : MonoBehaviour
     public void PoseRunner(float x, float y, float lean, float speed, bool duck, bool air, float stumble, float dt)
     {
         runner.localPosition = new Vector3(x, y, 0);
+        if (runnerAnim != null)
+        {
+            string want = stumble > 0.55f ? "Stumble" : duck ? "Slide" : air ? "Jump" : speed < 0.6f ? "Idle" : "Run";
+            if (want != animState)
+            {
+                // let one-shot clips finish their key part before switching back to Run
+                runnerAnim.CrossFadeInFixedTime(want, want == "Run" ? 0.18f : 0.1f);
+                animState = want;
+            }
+            runnerAnim.speed = want == "Run" ? Mathf.Clamp(speed / 12f, 0.75f, 1.35f) : 1f;
+            runner.localRotation = Quaternion.Euler(0, lean * 12f, 0);
+            return;
+        }
         animPhase += dt * (3f + speed * 0.55f);
         float s = Mathf.Sin(animPhase), amp = Mathf.Clamp01(speed / 6f);
         float swing = s * 55f * amp;
@@ -199,7 +248,7 @@ public class RushWorld : MonoBehaviour
         var tr = new GameObject("Train").transform; tr.SetParent(transform);
         Color[] liveries = { Hex("#e63946"), Hex("#ffb703"), Hex("#219ebc"), Hex("#2a9d8f"), Hex("#8338ec") };
         var col = liveries[Random.Range(0, liveries.Length)];
-        var bodyM = Mat(col, 0.55f, 0.2f); var white = Mat(Hex("#f1f1f1"), 0.5f); var glass = Mat(Hex("#1d3557"), 0.95f, 0.3f);
+        var bodyM = TMat("metal", new Vector2(len / 3f, 1), Color.Lerp(col, Color.white, 0.15f), col); var white = Mat(Hex("#f1f1f1"), 0.5f); var glass = Mat(Hex("#1d3557"), 0.95f, 0.3f);
         var dark = Mat(Hex("#2b2d42"), 0.3f);
         Prim(PrimitiveType.Cube, tr, new Vector3(0, 1.75f, 0), new Vector3(2.2f, 2.9f, len), bodyM);
         Prim(PrimitiveType.Cube, tr, new Vector3(0, 3.28f, 0), new Vector3(1.9f, 0.18f, len - 0.4f), white);
