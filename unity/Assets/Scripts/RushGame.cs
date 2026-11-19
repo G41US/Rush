@@ -345,7 +345,7 @@ public class RushGame : MonoBehaviour
 #endif
         if (!camStarted) { camStarted = true; PoseSource.Start(); }
         int st = PoseSource.State;
-        string diag = $"\n\nCamera: {(st > 0 ? "on" : st < 0 ? "blocked" : "starting…")} · frames {PoseSource.FrameCount}";
+        string diag = $"\n\nCamera: {(st > 0 ? "on" : st < 0 ? "blocked" : "starting…")} · frames {PoseSource.FrameCount} · {PoseSource.Info}";
         if (st < 0) { setupTx.text = "Camera not available"; setupSub.text = "Allow camera access in Settings → Rail Rush, or play with swipes." + diag; return; }
         if (st > 0 && PoseSource.FrameCount == 0 && setupT > 6f) { setupTx.text = "Camera is on but no picture"; setupSub.text = "Close other apps using the camera and try again." + diag; return; }
         switch (motion.State)
@@ -601,7 +601,7 @@ public class RushGame : MonoBehaviour
         for (int i = 0; i < bones.Count; i++)
         {
             int a = Skeleton[i, 0], b = Skeleton[i, 1];
-            bool vis = ok && PoseSource.Conf[a] > 0.4f && PoseSource.Conf[b] > 0.4f;
+            bool vis = ok && PoseSource.Conf[a] > 0.3f && PoseSource.Conf[b] > 0.3f;
             bones[i].enabled = vis;
             if (vis) UIKit.SetLine(bones[i], P(a), P(b));
         }

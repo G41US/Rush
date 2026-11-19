@@ -7,6 +7,10 @@ static const int kJoints = 13;
 static float gLatest[1 + kJoints * 3];
 static NSLock *gLock;
 static int gState = 0; // 0 idle, 1 running, -1 denied/failed
+// Orientation auto-detect: the front camera buffer's rotation differs by device and by how the phone is held,
+// so we cycle through the 4 rotations until Vision finds a person, then stay on that one.
+static const CGImagePropertyOrientation kOrients[4] = {kCGImagePropertyOrientationUp, kCGImagePropertyOrientationRight, kCGImagePropertyOrientationDown, kCGImagePropertyOrientationLeft};
+static int gOrient = 0, gMiss = 0, gDetections = 0;
 
 @interface PBCapture : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
 @property(nonatomic, strong) AVCaptureSession *session;
@@ -60,8 +64,15 @@ static int gState = 0; // 0 idle, 1 running, -1 denied/failed
   [out setSampleBufferDelegate:self queue:self.queue];
   if ([s canAddOutput:out]) [s addOutput:out];
   AVCaptureConnection *c = [out connectionWithMediaType:AVMediaTypeVideo];
-  if (c.isVideoOrientationSupported) c.videoOrientation = self.orientation;
+  if (c.isVideoOrientationSupported) c.videoOrientation = AVCaptureVideoOrientationPortrait; // known base; Vision gets the rotation
   if (c.isVideoMirroringSupported) { c.automaticallyAdjustsVideoMirroring = NO; c.videoMirrored = NO; }
+  // first guess from how the app is held: landscape needs a quarter turn
+  switch (self.orientation) {
+    case AVCaptureVideoOrientationLandscapeLeft: gOrient = 1; break;
+    case AVCaptureVideoOrientationLandscapeRight: gOrient = 3; break;
+    case AVCaptureVideoOrientationPortraitUpsideDown: gOrient = 2; break;
+    default: gOrient = 0; break;
+  }
   if ([cam lockForConfiguration:nil]) { cam.activeVideoMinFrameDuration = CMTimeMake(1, 30); [cam unlockForConfiguration]; }
   self.session = s;
   [s startRunning];
@@ -73,9 +84,11 @@ static int gState = 0; // 0 idle, 1 running, -1 denied/failed
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sb fromConnection:(AVCaptureConnection *)conn {
   CVPixelBufferRef px = CMSampleBufferGetImageBuffer(sb);
   if (!px) return;
-  VNImageRequestHandler *h = [[VNImageRequestHandler alloc] initWithCVPixelBuffer:px orientation:kCGImagePropertyOrientationUp options:@{}];
+  VNImageRequestHandler *h = [[VNImageRequestHandler alloc] initWithCVPixelBuffer:px orientation:kOrients[gOrient] options:@{}];
   if (![h performRequests:@[ self.request ] error:nil]) return;
   VNHumanBodyPoseObservation *obs = (VNHumanBodyPoseObservation *)self.request.results.firstObject;
+  if (obs) { gMiss = 0; gDetections++; }
+  else if (++gMiss >= 12) { gMiss = 0; gOrient = (gOrient + 1) % 4; } // try the next rotation
   float buf[1 + kJoints * 3] = {0};
   buf[0] = (float)CACurrentMediaTime();
   if (obs) {
@@ -113,6 +126,7 @@ void PB_Start() {
 }
 void PB_Stop() { PBCapture *c = gCapture; gCapture = nil; if (c) dispatch_async(c.queue, ^{ [c stop]; }); }
 int PB_State() { return gState; }
+int PB_Info() { return gOrient * 1000000 + (gDetections % 1000000); }
 int PB_GetLatest(float *outBuf, int len) {
   if (!gLock || len < 1 + kJoints * 3) return 0;
   [gLock lock];

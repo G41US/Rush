@@ -22,6 +22,7 @@ public static class PoseSource
     [DllImport("__Internal")] static extern void PB_Start();
     [DllImport("__Internal")] static extern void PB_Stop();
     [DllImport("__Internal")] static extern int PB_State();
+    [DllImport("__Internal")] static extern int PB_Info();
     [DllImport("__Internal")] static extern int PB_GetLatest(float[] outBuf, int len);
 #elif UNITY_ANDROID && !UNITY_EDITOR
     static AndroidJavaClass bridge;
@@ -34,6 +35,21 @@ public static class PoseSource
 #else
     public static bool Supported => false;
 #endif
+
+    /// Diagnostics line: rotation in use (iOS) and how many frames contained a person.
+    public static string Info
+    {
+        get
+        {
+            int seen = 0; for (int i = 0; i < Joints; i++) if (Conf[i] > 0.3f) seen++;
+#if UNITY_IOS && !UNITY_EDITOR
+            int v = PB_Info();
+            return $"rotation {v / 1000000 * 90}° · person found {v % 1000000}× · joints {seen}/13";
+#else
+            return $"joints {seen}/13";
+#endif
+        }
+    }
 
     /// 1 running, 0 starting/idle, -1 denied or failed.
     public static int State

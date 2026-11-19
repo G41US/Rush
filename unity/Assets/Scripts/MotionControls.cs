@@ -35,7 +35,7 @@ public class MotionControls
         Lane = 0; Ducking = false; Effort = 0; jumpArmed = true; legHist.Clear();
     }
 
-    static bool Seen(int i) => PoseSource.Conf[i] > 0.45f;
+    static bool Seen(int i) => PoseSource.Conf[i] > 0.3f;
 
     public void Update(float now)
     {
