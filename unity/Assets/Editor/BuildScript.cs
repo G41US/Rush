@@ -63,10 +63,10 @@ public static class BuildScript
         PlayerSettings.companyName = "Marvelous";
         PlayerSettings.productName = "Rail Rush";
         PlayerSettings.bundleVersion = "1.0";
-        PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
-        PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+        PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
+        PlayerSettings.allowedAutorotateToLandscapeLeft = false;
         PlayerSettings.allowedAutorotateToLandscapeRight = false;
-        PlayerSettings.allowedAutorotateToPortrait = false;
+        PlayerSettings.allowedAutorotateToPortrait = true;
         PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
         PlayerSettings.colorSpace = ColorSpace.Linear;
         PlayerSettings.SplashScreen.show = false;

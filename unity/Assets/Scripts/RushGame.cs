@@ -49,7 +49,7 @@ public class RushGame : MonoBehaviour
     {
         Application.targetFrameRate = 60;
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
-        Screen.orientation = ScreenOrientation.LandscapeLeft;
+        Screen.orientation = ScreenOrientation.Portrait;
 
         world = new GameObject("World").AddComponent<RushWorld>();
         world.Build();
@@ -71,7 +71,7 @@ public class RushGame : MonoBehaviour
         var canvasGo = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var canvas = canvasGo.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         var scaler = canvasGo.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution = new Vector2(1920, 1080); scaler.matchWidthOrHeight = 1f;
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution = new Vector2(1080, 1920); scaler.matchWidthOrHeight = 0f;
         if (FindAnyObjectByType<EventSystem>() == null) new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
 
         safe = UIKit.Rect("Safe", canvasGo.transform); ApplySafeArea();
@@ -80,36 +80,36 @@ public class RushGame : MonoBehaviour
         hud = UIKit.Stretch(UIKit.Rect("HUD", safe));
         var close = UIKit.Button(hud, new Color(0, 0, 0, 0.45f), () => EndRun(false));
         close.image.sprite = UIKit.Circle;
-        UIKit.Place(close.image.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(28, -24), new Vector2(76, 76));
+        UIKit.Place(close.image.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(24, -20), new Vector2(76, 76));
         UIKit.Stretch(UIKit.Label(close.transform, "✕", 36, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform);
 
         var bar = UIKit.Box(hud, new Color(0, 0, 0, 0.4f));
-        UIKit.Place(bar.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-40, -42), new Vector2(980, 36));
+        var br = bar.rectTransform; br.anchorMin = new Vector2(0, 1); br.anchorMax = new Vector2(1, 1); br.pivot = new Vector2(0.5f, 1); br.offsetMin = new Vector2(124, -76); br.offsetMax = new Vector2(-28, -40);
         progFill = UIKit.Box(bar.transform, Hex("#c7f464"));
         var pf = progFill.rectTransform; pf.anchorMin = Vector2.zero; pf.anchorMax = new Vector2(0, 1); pf.pivot = new Vector2(0, 0.5f); pf.offsetMin = new Vector2(4, 4); pf.offsetMax = new Vector2(0, -4);
 
         var coinPill = UIKit.Box(hud, new Color(0, 0, 0, 0.45f));
-        UIKit.Place(coinPill.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-200, -24), new Vector2(170, 76));
+        UIKit.Place(coinPill.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-200, -100), new Vector2(170, 70));
         var coinIc = UIKit.Box(coinPill.transform, Hex("#ffc300"), UIKit.Circle);
         UIKit.Place(coinIc.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(16, 0), new Vector2(40, 40));
         coinsTx = UIKit.Label(coinPill.transform, "0", 36, Color.white, TextAnchor.MiddleRight, FontStyle.Bold);
         UIKit.Stretch(coinsTx.rectTransform, 60, 0, 20, 0);
         var timePill = UIKit.Box(hud, new Color(0, 0, 0, 0.45f));
-        UIKit.Place(timePill.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-24, -24), new Vector2(160, 76));
+        UIKit.Place(timePill.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-28, -100), new Vector2(160, 70));
         timeTx = UIKit.Label(timePill.transform, "0:00", 36, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
         UIKit.Stretch(timeTx.rectTransform);
 
         cueRing = UIKit.Box(hud, new Color(0.05f, 0.25f, 0.12f, 0.9f), UIKit.Circle);
-        UIKit.Place(cueRing.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -110), new Vector2(170, 170));
+        UIKit.Place(cueRing.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -200), new Vector2(170, 170));
         var outline = cueRing.gameObject.AddComponent<Outline>(); outline.effectColor = Hex("#4ade80"); outline.effectDistance = new Vector2(5, 5);
         cueTx = UIKit.Label(cueRing.transform, "DUCK", 40, Hex("#4ade80"), TextAnchor.MiddleCenter, FontStyle.Bold);
         UIKit.Stretch(cueTx.rectTransform);
 
         toastTx = UIKit.Label(hud, "", 96, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-        UIKit.Place(toastTx.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 60), new Vector2(1200, 200));
+        UIKit.Place(toastTx.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 160), new Vector2(1000, 200));
         toastTx.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(4, -4);
         statusTx = UIKit.Label(hud, "", 54, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-        UIKit.Place(statusTx.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -80), new Vector2(1400, 160));
+        UIKit.Place(statusTx.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 20), new Vector2(1000, 160));
         statusTx.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(3, -3);
 
         // body preview (skeleton) + effort meter
@@ -118,7 +118,7 @@ public class RushGame : MonoBehaviour
         UIKit.Place(pip, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-24, 24), new Vector2(220, 290));
         for (int i = 0; i < Skeleton.GetLength(0); i++) bones.Add(UIKit.Line(pip, Hex("#4ade80"), 9));
         var eb = UIKit.Box(hud, new Color(0, 0, 0, 0.45f));
-        UIKit.Place(eb.rectTransform, new Vector2(0, 0), new Vector2(0, 0), new Vector2(28, 28), new Vector2(360, 70));
+        UIKit.Place(eb.rectTransform, new Vector2(0, 0), new Vector2(0, 0), new Vector2(28, 28), new Vector2(380, 70));
         effortFill = UIKit.Box(eb.transform, Hex("#ff9f0a"));
         var ef = effortFill.rectTransform; ef.anchorMin = Vector2.zero; ef.anchorMax = new Vector2(0, 1); ef.pivot = new Vector2(0, 0.5f); ef.offsetMin = new Vector2(4, 4); ef.offsetMax = new Vector2(0, -4);
         effortTx = UIKit.Label(eb.transform, "RUN!", 30, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
@@ -128,28 +128,28 @@ public class RushGame : MonoBehaviour
         setup = UIKit.Stretch(UIKit.Rect("Setup", safe));
         var sbg = UIKit.Box(setup, new Color(0.04f, 0.04f, 0.08f, 0.82f)); UIKit.Stretch(sbg.rectTransform, -200, -200, -200, -200);
         setupTx = UIKit.Label(setup, "", 64, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-        UIKit.Place(setupTx.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-170, 90), new Vector2(1200, 120));
+        UIKit.Place(setupTx.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 160), new Vector2(1000, 120));
         setupSub = UIKit.Label(setup, "", 34, new Color(1, 1, 1, 0.75f), TextAnchor.UpperCenter);
-        UIKit.Place(setupSub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1), new Vector2(-170, 20), new Vector2(1100, 260));
+        UIKit.Place(setupSub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1), new Vector2(0, 80), new Vector2(980, 420));
         var skip = UIKit.Button(setup, new Color(1, 1, 1, 0.14f), () => { PoseSource.Stop(); runUsesBody = false; BeginCountdown(); });
-        UIKit.Place(skip.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-170, 60), new Vector2(520, 96));
+        UIKit.Place(skip.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 360), new Vector2(700, 110));
         UIKit.Stretch(UIKit.Label(skip.transform, "Play with swipes instead", 32, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform);
 
         // ---------------- Menu ----------------
         menu = UIKit.Stretch(UIKit.Rect("Menu", safe));
         var mbg = UIKit.Box(menu, new Color(0.04f, 0.04f, 0.08f, 0.72f)); UIKit.Stretch(mbg.rectTransform, -200, -200, -200, -200);
         var icon = UIKit.Box(menu, Hex("#5e5ce6"));
-        UIKit.Place(icon.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -60), new Vector2(140, 140));
+        UIKit.Place(icon.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(60, -40), new Vector2(140, 140));
         UIKit.Stretch(UIKit.Label(icon.transform, "R", 86, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform);
         var title = UIKit.Label(menu, "Rail Rush Workout", 68, Color.white, TextAnchor.UpperLeft, FontStyle.Bold);
-        UIKit.Place(title.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -220), new Vector2(700, 100));
+        UIKit.Place(title.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(60, -200), new Vector2(960, 100));
         var sub = UIKit.Label(menu, "Run in place. Lean to switch lanes. Jump. Squat to duck.", 32, new Color(1, 1, 1, 0.7f), TextAnchor.UpperLeft);
-        UIKit.Place(sub.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -320), new Vector2(680, 120));
+        UIKit.Place(sub.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(60, -290), new Vector2(960, 110));
 
         var castRow = UIKit.Row(menu, Hex("#636366"), "TV", "Cast to TV", "Smart View · Chromecast · AirPlay", ShowCast);
-        UIKit.Place(castRow.image.rectTransform, new Vector2(0, 0), new Vector2(0, 0), new Vector2(80, 190), new Vector2(760, 110));
+        UIKit.Place(castRow.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 190), new Vector2(960, 120));
         var tg = UIKit.Box(menu, new Color(1, 1, 1, 0.10f));
-        UIKit.Place(tg.rectTransform, new Vector2(0, 0), new Vector2(0, 0), new Vector2(80, 60), new Vector2(760, 110));
+        UIKit.Place(tg.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(960, 120));
         UIKit.Stretch(UIKit.Label(tg.transform, "Body control (camera)", 34, Color.white).rectTransform, 30, 0, 160, 0);
         toggleBg = UIKit.Box(tg.transform, Hex("#34c759"), UIKit.Circle);
         UIKit.Place(toggleBg.rectTransform, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(110, 64));
@@ -161,39 +161,39 @@ public class RushGame : MonoBehaviour
         {
             var s = sessions[i];
             var row = UIKit.Row(menu, s.col, s.glyph, s.name, s.sub, () => StartSession(s));
-            UIKit.Place(row.image.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-80, -60 - i * 136), new Vector2(740, 118));
+            UIKit.Place(row.image.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -430 - i * 150), new Vector2(960, 130));
         }
 
         // ---------------- Results ----------------
         results = UIKit.Stretch(UIKit.Rect("Results", safe));
         var rbg = UIKit.Box(results, new Color(0.04f, 0.04f, 0.08f, 0.85f)); UIKit.Stretch(rbg.rectTransform, -200, -200, -200, -200);
         var done = UIKit.Label(results, "Workout complete", 36, new Color(1, 1, 1, 0.7f), TextAnchor.MiddleCenter);
-        UIKit.Place(done.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -60), new Vector2(800, 60));
+        UIKit.Place(done.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -120), new Vector2(900, 60));
         rCal = UIKit.Label(results, "0", 150, Hex("#ffd60a"), TextAnchor.MiddleCenter, FontStyle.Bold);
-        UIKit.Place(rCal.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -130), new Vector2(800, 180));
+        UIKit.Place(rCal.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -190), new Vector2(900, 180));
         var kc = UIKit.Label(results, "estimated kcal", 32, new Color(1, 1, 1, 0.6f), TextAnchor.MiddleCenter);
-        UIKit.Place(kc.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -310), new Vector2(800, 50));
+        UIKit.Place(kc.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -370), new Vector2(900, 50));
         Text Stat(int i, string label)
         {
             var b = UIKit.Box(results, new Color(1, 1, 1, 0.1f));
-            UIKit.Place(b.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-465 + i * 310, -40), new Vector2(280, 150));
+            UIKit.Place(b.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(i % 2 == 0 ? -240 : 240, i < 2 ? 60 : -120), new Vector2(460, 160));
             var v = UIKit.Label(b.transform, "0", 56, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold); UIKit.Stretch(v.rectTransform, 0, 10, 0, 50);
             UIKit.Stretch(UIKit.Label(b.transform, label, 26, new Color(1, 1, 1, 0.6f), TextAnchor.MiddleCenter).rectTransform, 0, 100, 0, 8);
             return v;
         }
         rCoins = Stat(0, "Coins"); rDist = Stat(1, "Distance"); rDodge = Stat(2, "Lane switches"); rMoves = Stat(3, "Jumps + ducks");
         var again = UIKit.Button(results, Hex("#5e5ce6"), () => StartSession(cur));
-        UIKit.Place(again.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-220, 70), new Vector2(400, 110));
+        UIKit.Place(again.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 200), new Vector2(940, 120));
         UIKit.Stretch(UIKit.Label(again.transform, "Run again", 38, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform);
         var home = UIKit.Button(results, new Color(1, 1, 1, 0.14f), ShowMenu);
-        UIKit.Place(home.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(220, 70), new Vector2(400, 110));
+        UIKit.Place(home.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 60), new Vector2(940, 120));
         UIKit.Stretch(UIKit.Label(home.transform, "Home", 38, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform);
 
         // ---------------- Cast sheet ----------------
         cast = UIKit.Stretch(UIKit.Rect("Cast", safe));
         var cbg = UIKit.Box(cast, new Color(0.04f, 0.04f, 0.08f, 0.96f)); UIKit.Stretch(cbg.rectTransform, -200, -200, -200, -200);
         var ct = UIKit.Label(cast, "Cast to TV", 64, Color.white, TextAnchor.UpperLeft, FontStyle.Bold);
-        UIKit.Place(ct.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -50), new Vector2(900, 90));
+        UIKit.Place(ct.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(60, -40), new Vector2(960, 90));
         string[,] tips =
         {
             { "1", "Samsung · LG · Hisense · Sony · TCL", "Android: swipe down → Smart View / Screen Cast → your TV" },
@@ -205,13 +205,13 @@ public class RushGame : MonoBehaviour
         for (int i = 0; i < 4; i++)
         {
             var r = UIKit.Row(cast, tc[i], tips[i, 0], tips[i, 1], tips[i, 2], () => { });
-            UIKit.Place(r.image.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -170 - i * 130), new Vector2(1100, 112));
+            UIKit.Place(r.image.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -160 - i * 150), new Vector2(960, 130));
         }
         var open = UIKit.Button(cast, Hex("#5e5ce6"), OpenCastSettings);
-        UIKit.Place(open.image.rectTransform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-80, 200), new Vector2(520, 110));
+        UIKit.Place(open.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 200), new Vector2(940, 120));
         UIKit.Stretch(UIKit.Label(open.transform, "Open cast settings", 36, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform);
         var cdone = UIKit.Button(cast, new Color(1, 1, 1, 0.14f), () => cast.gameObject.SetActive(false));
-        UIKit.Place(cdone.image.rectTransform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-80, 70), new Vector2(520, 110));
+        UIKit.Place(cdone.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 60), new Vector2(940, 120));
         UIKit.Stretch(UIKit.Label(cdone.transform, "Done", 36, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform);
         cast.gameObject.SetActive(false);
     }
@@ -566,9 +566,11 @@ public class RushGame : MonoBehaviour
 
     void FollowCamera(float px, float dt)
     {
-        var target = new Vector3(px * 0.65f, 4.4f + y * 0.35f, -7.6f);
+        float aspect = (float)Screen.width / Mathf.Max(1, Screen.height);
+        cam.fieldOfView = Mathf.Clamp(2f * Mathf.Atan(Mathf.Tan(27f * Mathf.Deg2Rad) / aspect) * Mathf.Rad2Deg, 60f, 92f);
+        var target = new Vector3(px * 0.55f, 5.6f + y * 0.35f, -6.2f);
         cam.transform.position = Vector3.Lerp(cam.transform.position, target, 1 - Mathf.Exp(-dt * 6f));
-        var look = new Vector3(px * 0.5f, 1.6f, 6f);
+        var look = new Vector3(px * 0.45f, 1.2f, 9f);
         cam.transform.rotation = Quaternion.Slerp(cam.transform.rotation, Quaternion.LookRotation(look - cam.transform.position), 1 - Mathf.Exp(-dt * 6f));
     }
 
