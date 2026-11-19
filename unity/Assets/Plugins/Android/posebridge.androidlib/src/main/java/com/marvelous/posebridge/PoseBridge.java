@@ -87,7 +87,7 @@ public class PoseBridge {
     private static void bindCamera(final Activity activity) {
         try {
             owner = new Owner();
-            owner.reg.setCurrentState(Lifecycle.State.RESUMED);
+            owner.reg.handleLifecycleEvent(Lifecycle.Event.ON_CREATE); owner.reg.handleLifecycleEvent(Lifecycle.Event.ON_START); owner.reg.handleLifecycleEvent(Lifecycle.Event.ON_RESUME);
             ListenableFuture<ProcessCameraProvider> f = ProcessCameraProvider.getInstance(activity);
             f.addListener(() -> {
                 try {
@@ -111,7 +111,7 @@ public class PoseBridge {
     public static void stop(final Activity activity) {
         activity.runOnUiThread(() -> {
             if (provider != null) provider.unbindAll();
-            if (owner != null) owner.reg.setCurrentState(Lifecycle.State.DESTROYED);
+            if (owner != null) owner.reg.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY);
             state = 0;
         });
     }
