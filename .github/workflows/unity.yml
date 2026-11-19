@@ -66,8 +66,10 @@ jobs:
         run: |
           cd xc
           xcodebuild -workspace Unity-iPhone.xcworkspace -scheme Unity-iPhone -configuration Release -sdk iphoneos \
-            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -40
-          test -d dd/Build/Products/Release-iphoneos/*.app
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build > build.log 2>&1 \
+            || { grep -E "error|Undefined|not found" build.log | head -60; tail -40 build.log; exit 1; }
+          ls -d dd/Build/Products/Release-iphoneos/*.app
       - name: Package IPA
         run: |
           mkdir Payload && cp -R xc/dd/Build/Products/Release-iphoneos/*.app Payload/

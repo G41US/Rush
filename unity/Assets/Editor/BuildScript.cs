@@ -174,6 +174,8 @@ public static class BuildScript
         proj.AddFrameworkToProject(fw, "AVFoundation.framework", false);
         proj.AddFrameworkToProject(fw, "CoreMedia.framework", false);
         proj.AddFrameworkToProject(fw, "CoreVideo.framework", false);
+        foreach (var f in new[] { "OpenGLES.framework", "Accelerate.framework", "CoreImage.framework", "Metal.framework", "MetalKit.framework", "CoreGraphics.framework" })
+            proj.AddFrameworkToProject(fw, f, false); // MediaPipe dependencies
         foreach (var g in new[] { proj.GetUnityMainTargetGuid(), fw })
         {
             proj.SetBuildProperty(g, "ENABLE_BITCODE", "NO");
