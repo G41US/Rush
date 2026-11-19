@@ -20,6 +20,8 @@ static int gState = 0; // 0 idle, 1 running, -1 denied/failed
   self.queue = dispatch_queue_create("posebridge", DISPATCH_QUEUE_SERIAL);
   self.request = [[VNDetectHumanBodyPoseRequest alloc] init];
   self.orientation = [PBCapture currentVideoOrientation];
+  AVAuthorizationStatus st = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
+  if (st == AVAuthorizationStatusDenied || st == AVAuthorizationStatusRestricted) { gState = -1; return; }
   [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
     if (!granted) { gState = -1; return; }
     dispatch_async(self.queue, ^{ [self configure]; });
@@ -105,10 +107,11 @@ static PBCapture *gCapture;
 extern "C" {
 void PB_Start() {
   if (!gLock) gLock = [[NSLock alloc] init];
-  if (gCapture) return;
+  if (gCapture && gState == 1) return;
+  gState = 0;
   dispatch_async(dispatch_get_main_queue(), ^{ gCapture = [[PBCapture alloc] init]; [gCapture start]; });
 }
-void PB_Stop() { [gCapture stop]; gCapture = nil; }
+void PB_Stop() { PBCapture *c = gCapture; gCapture = nil; if (c) dispatch_async(c.queue, ^{ [c stop]; }); }
 int PB_State() { return gState; }
 int PB_GetLatest(float *outBuf, int len) {
   if (!gLock || len < 1 + kJoints * 3) return 0;

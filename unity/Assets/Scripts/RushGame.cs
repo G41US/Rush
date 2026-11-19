@@ -28,7 +28,8 @@ public class RushGame : MonoBehaviour
     Session cur;
     RushWorld world; Synth synth; Camera cam;
     readonly MotionControls motion = new MotionControls();
-    bool useBody = true;
+    bool useBody = true;      // menu toggle
+    bool runUsesBody;         // this run (swipe fallback can switch it off)
 
     // run state
     float t, dist, x, y, vy, lean, stumble, stopT, countdown, nextRowZ, effortShown;
@@ -130,7 +131,7 @@ public class RushGame : MonoBehaviour
         UIKit.Place(setupTx.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-170, 90), new Vector2(1200, 120));
         setupSub = UIKit.Label(setup, "", 34, new Color(1, 1, 1, 0.75f), TextAnchor.UpperCenter);
         UIKit.Place(setupSub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1), new Vector2(-170, 20), new Vector2(1100, 260));
-        var skip = UIKit.Button(setup, new Color(1, 1, 1, 0.14f), () => { useBody = false; BeginCountdown(); });
+        var skip = UIKit.Button(setup, new Color(1, 1, 1, 0.14f), () => { PoseSource.Stop(); runUsesBody = false; BeginCountdown(); });
         UIKit.Place(skip.image.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-170, 60), new Vector2(520, 96));
         UIKit.Stretch(UIKit.Label(skip.transform, "Play with swipes instead", 32, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold).rectTransform);
 
@@ -270,12 +271,13 @@ public class RushGame : MonoBehaviour
         nextRowZ = 45f; toastT = 0; toastTx.text = "";
         motion.Reset();
         synth.Playing = true;
-        if (useBody && PoseSource.Supported)
+        runUsesBody = useBody && PoseSource.Supported;
+        if (runUsesBody)
         {
-            PoseSource.Start();
+            camStarted = false; setupT = 0;
             mode = Mode.Setup; Show(setup);
         }
-        else { useBody = false; BeginCountdown(); }
+        else BeginCountdown();
     }
 
     void BeginCountdown() { mode = Mode.Countdown; countdown = 3.4f; Show(hud); }
@@ -284,7 +286,7 @@ public class RushGame : MonoBehaviour
     {
         if (!finished) { ShowMenu(); return; }
         mode = Mode.Results; synth.Playing = false; PoseSource.Stop();
-        int kcal = Mathf.RoundToInt(t / 60f * (useBody ? 10f : 4f) + (jumps + ducks) * 0.4f);
+        int kcal = Mathf.RoundToInt(t / 60f * (runUsesBody ? 10f : 4f) + (jumps + ducks) * 0.4f);
         rCal.text = kcal.ToString(); rCoins.text = coinsGot.ToString(); rDist.text = Mathf.RoundToInt(dist) + " m";
         rDodge.text = dodges.ToString(); rMoves.text = (jumps + ducks).ToString();
         Show(results);
@@ -299,9 +301,9 @@ public class RushGame : MonoBehaviour
     {
         if (Screen.safeArea != lastSafe) ApplySafeArea();
         float dt = Mathf.Min(Time.deltaTime, 0.05f), now = Time.realtimeSinceStartup;
-        if (useBody) { PoseSource.Poll(); motion.Update(now); DrawSkeleton(); }
-        pip.gameObject.SetActive(useBody && (mode == Mode.Run || mode == Mode.Countdown || mode == Mode.Setup));
-        effortFill.transform.parent.gameObject.SetActive(useBody && mode == Mode.Run);
+        if (runUsesBody) { PoseSource.Poll(); motion.Update(now); DrawSkeleton(); }
+        pip.gameObject.SetActive(runUsesBody && (mode == Mode.Run || mode == Mode.Countdown || mode == Mode.Setup));
+        effortFill.transform.parent.gameObject.SetActive(runUsesBody && mode == Mode.Run);
 
         if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastTx.text = ""; }
 
@@ -327,21 +329,34 @@ public class RushGame : MonoBehaviour
         FollowCamera(0, dt);
     }
 
+    bool camStarted; float setupT;
     void UpdateSetup(float dt)
     {
-        Idle(dt);
+        Idle(dt); setupT += dt;
         cueRing.gameObject.SetActive(false); statusTx.text = "";
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera))
+        {
+            if (!askedPerm) { askedPerm = true; UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Camera); }
+            setupTx.text = "Allow camera access";
+            setupSub.text = "The camera tracks your body. Nothing is recorded or uploaded.\nIf you denied it: Settings → Apps → Rail Rush → Permissions → Camera.";
+            return;
+        }
+#endif
+        if (!camStarted) { camStarted = true; PoseSource.Start(); }
         int st = PoseSource.State;
-        if (st < 0) { setupTx.text = "Camera not available"; setupSub.text = "Allow camera access in Settings, or play with swipes."; return; }
+        string diag = $"\n\nCamera: {(st > 0 ? "on" : st < 0 ? "blocked" : "starting…")} · frames {PoseSource.FrameCount}";
+        if (st < 0) { setupTx.text = "Camera not available"; setupSub.text = "Allow camera access in Settings → Rail Rush, or play with swipes." + diag; return; }
+        if (st > 0 && PoseSource.FrameCount == 0 && setupT > 6f) { setupTx.text = "Camera is on but no picture"; setupSub.text = "Close other apps using the camera and try again." + diag; return; }
         switch (motion.State)
         {
             case MotionControls.Phase.NoBody:
                 setupTx.text = "Step back into view";
-                setupSub.text = "Prop your phone at waist height and stand about 2 m away\nso your head, hips and knees are all visible.";
+                setupSub.text = "Prop your phone at waist height and stand about 2 m away\nso your head, hips and knees are all visible." + diag;
                 break;
             case MotionControls.Phase.Calibrating:
                 setupTx.text = "Stand still… " + Mathf.RoundToInt(Mathf.Clamp01(motion.CalibrationProgress) * 100) + "%";
-                setupSub.text = "Arms by your side. This sets your centre lane and standing height.";
+                setupSub.text = "Arms by your side. This sets your centre lane and standing height." + diag;
                 break;
             case MotionControls.Phase.Ready:
                 BeginCountdown(); break;
@@ -356,7 +371,7 @@ public class RushGame : MonoBehaviour
 
         // ---------- inputs ----------
         int wantLane = lane; bool jumpNow = false;
-        if (useBody)
+        if (runUsesBody)
         {
             if (motion.LostFor > 1.2f) { statusTx.text = "Step back into view"; }
             else statusTx.text = "";
@@ -375,7 +390,7 @@ public class RushGame : MonoBehaviour
         if (wantLane != lane)
         {
             int step = wantLane > lane ? 1 : -1, next = lane + step;
-            if (TrainAlongside(next)) { if (!useBody) world.PoseRunner(x, y, step * 0.6f, 0, false, false, 0.4f, 0); }
+            if (TrainAlongside(next)) { if (!runUsesBody) world.PoseRunner(x, y, step * 0.6f, 0, false, false, 0.4f, 0); }
             else { lane = next; dodges++; synth.Whoosh(); }
         }
         float targetX = lane * RushWorld.LaneW;
@@ -390,12 +405,12 @@ public class RushGame : MonoBehaviour
         vy -= 28f * dt; y = Mathf.Max(0, y + vy * dt); if (y <= 0) vy = 0;
 
         // ---------- speed: you must actually run in place ----------
-        float effort = useBody ? motion.Effort : 1f;
+        float effort = runUsesBody ? motion.Effort : 1f;
         effortShown = Mathf.Lerp(effortShown, effort, dt * 6f);
         effortFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(effortShown), 1);
         effortTx.text = effortShown < 0.25f ? "RUN IN PLACE!" : effortShown < 0.6f ? "FASTER!" : "GREAT PACE";
         float ramp = 1f + 0.3f * (t / total);
-        float speed = cur.speed * ramp * (useBody ? Mathf.Lerp(0.3f, 1.05f, effort) : 1f);
+        float speed = cur.speed * ramp * (runUsesBody ? Mathf.Lerp(0.3f, 1.05f, effort) : 1f);
         if (stopT > 0) { stopT -= dt; speed = 0; }
         stumble = Mathf.MoveTowards(stumble, 0, dt * 2f);
         float dz = speed * dt; dist += dz;
@@ -462,7 +477,7 @@ public class RushGame : MonoBehaviour
         coinsTx.text = coinsGot.ToString();
         float rem = total - t; timeTx.text = $"{(int)(rem / 60)}:{(int)(rem % 60):00}";
     }
-    bool wasDuck;
+    bool wasDuck, askedPerm;
 
     string CueFor(RushWorld.Obstacle o)
     {

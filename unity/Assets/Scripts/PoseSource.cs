@@ -13,6 +13,7 @@ public static class PoseSource
     public static readonly float[] Conf = new float[Joints];
     public static float FrameTime;           // native timestamp of the latest frame
     public static bool HasNewFrame;
+    public static int FrameCount;        // frames received since start (diagnostics)
 
     static readonly float[] buf = new float[1 + Joints * 3];
     static float lastTime = -1f;
@@ -51,6 +52,7 @@ public static class PoseSource
 
     public static void Start()
     {
+        FrameCount = 0;
 #if UNITY_IOS && !UNITY_EDITOR
         PB_Start();
 #elif UNITY_ANDROID && !UNITY_EDITOR
@@ -91,7 +93,7 @@ public static class PoseSource
             Pos[i] = new Vector2(buf[1 + i * 3], buf[2 + i * 3]);
             Conf[i] = buf[3 + i * 3];
         }
-        HasNewFrame = true;
+        HasNewFrame = true; FrameCount++;
 #pragma warning restore CS0162
     }
 }
