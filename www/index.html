@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0b14">
+<title>Rail Rush Workout</title>
+<style>
+:root{--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px)}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;background:#0b0b14;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;overflow:hidden;touch-action:none}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+.ui{position:fixed;inset:0;pointer-events:none}
+.ui>*{pointer-events:auto}
+/* HUD */
+#hud{display:none}
+.top{position:absolute;top:calc(var(--st) + 10px);left:calc(var(--sl) + 16px);right:calc(var(--sr) + 16px);display:flex;align-items:center;gap:10px}
+.prog{flex:1;height:14px;border-radius:7px;background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.7);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#d9f99d,#facc15)}
+.chip{background:rgba(0,0,0,.4);backdrop-filter:blur(12px);border-radius:999px;padding:6px 12px;font-weight:800;font-size:15px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.coin{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff7b0,#facc15 50%,#b45309);display:inline-block}
+.xbtn{width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.4);display:grid;place-items:center;flex:none}
+#cue{position:absolute;left:50%;top:calc(var(--st) + 52px);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;opacity:0;transition:opacity .15s}
+#cue .ring{width:78px;height:78px;border-radius:50%;background:rgba(10,40,20,.85);border:4px solid #4ade80;display:grid;place-items:center;box-shadow:0 0 24px #22c55e}
+#cue b{margin-top:4px;color:#4ade80;font-size:18px;font-weight:900;letter-spacing:1px;text-shadow:0 2px 6px #000}
+#pip{position:absolute;right:calc(var(--sr) + 12px);bottom:calc(var(--sb) + 12px);width:104px;height:138px;border-radius:14px;overflow:hidden;border:2px solid rgba(255,255,255,.8);background:#000;display:none}
+#pip canvas{width:100%;height:100%;display:block}
+#status{position:absolute;left:0;right:0;top:42%;text-align:center;font-size:26px;font-weight:900;text-shadow:0 3px 14px rgba(0,0,0,.8);pointer-events:none}
+#hint{position:absolute;left:calc(var(--sl) + 12px);bottom:calc(var(--sb) + 12px);font-size:12px;color:rgba(255,255,255,.75);background:rgba(0,0,0,.35);border-radius:10px;padding:6px 10px;max-width:58%}
+/* Menus */
+.sheet{position:absolute;inset:0;display:none;flex-direction:column;padding:calc(var(--st) + 18px) calc(var(--sr) + 20px) calc(var(--sb) + 20px) calc(var(--sl) + 20px);background:linear-gradient(180deg,rgba(11,11,20,.55),rgba(11,11,20,.92))}
+.sheet.on{display:flex}
+.appicon{width:72px;height:72px;border-radius:17px;background:linear-gradient(135deg,#38bdf8,#6366f1 55%,#f43f5e);display:grid;place-items:center;box-shadow:0 10px 30px rgba(99,102,241,.45);margin-bottom:14px}
+h1{font-size:32px;font-weight:800;letter-spacing:-.5px}
+.sub{color:rgba(255,255,255,.65);font-size:15px;margin-top:4px}
+.list{margin-top:18px;display:flex;flex-direction:column;gap:10px;overflow:auto;flex:1}
+.row{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.09);backdrop-filter:blur(20px);border-radius:16px;padding:12px 14px;border:none;color:#fff;text-align:left;font:inherit;width:100%}
+.ic{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;flex:none}
+.row b{display:block;font-size:17px}.row span{color:rgba(255,255,255,.6);font-size:13px}
+.chev{margin-left:auto;color:rgba(255,255,255,.5);font-size:22px}
+.tg{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.09);border-radius:14px;padding:12px 14px;margin-top:10px;font-size:15px}
+.sw{width:51px;height:31px;border-radius:16px;background:#3a3a44;position:relative;transition:.2s;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:#34c759}.sw.on::after{left:22px}
+.btn{border:none;border-radius:14px;padding:15px;font:700 17px -apple-system,sans-serif;color:#fff;background:#6366f1;width:100%;margin-top:10px}
+.btn.ghost{background:rgba(255,255,255,.12)}
+#results{align-items:center;justify-content:center;text-align:center}
+.big{font-size:64px;font-weight:900;background:linear-gradient(90deg,#facc15,#f43f5e);-webkit-background-clip:text;color:transparent}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%;max-width:420px;margin:20px 0 6px}
+.stats div{background:rgba(255,255,255,.09);border-radius:14px;padding:14px 6px}.stats b{display:block;font-size:22px}.stats span{font-size:12px;color:rgba(255,255,255,.6)}
+#results .btn{max-width:420px}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<video id="video" playsinline muted style="display:none"></video>
+
+<div class="ui">
+  <div id="hud">
+    <div class="top">
+      <button class="xbtn" id="quit" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="prog"><i id="prog"></i></div>
+      <div class="chip"><span class="coin"></span><span id="coins">0</span></div>
+      <div class="chip" id="time">0:00</div>
+      <button class="xbtn castBtn" aria-label="Cast to TV"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M2 8V6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2h-6M2 12a9 9 0 019 9M2 16a5 5 0 015 5M2 20h.01"/></svg></button>
+    </div>
+    <div id="cue"><div class="ring" id="cueIc"></div><b id="cueTx">DUCK</b></div>
+    <div id="status"></div>
+    <div id="hint"></div>
+    <div id="pip"><canvas id="pipc" width="208" height="276"></canvas></div>
+  </div>
+
+  <section class="sheet on" id="home">
+    <div class="appicon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4" r="2"/><path d="M8 21l3-6 3 2v5M6 12l3-4 4 1 3 3 3-1M11 15l2-6"/></svg></div>
+    <h1>Rail Rush Workout</h1>
+    <p class="sub">Run in place. Jump, duck and lean to dodge.</p>
+    <div class="list" id="sessions"></div>
+    <button class="row castBtn" style="margin-top:10px"><div class="ic" style="background:#636366"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M2 8V6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2h-6M2 12a9 9 0 019 9M2 16a5 5 0 015 5M2 20h.01"/></svg></div><div><b>Cast to TV</b><span>Any TV: Smart View, Chromecast, AirPlay, Miracast</span></div><div class="chev">›</div></button>
+    <div class="tg">Body control (camera)<div class="sw on" id="camSw"></div></div>
+    <p class="sub" style="font-size:12px;margin-top:8px;text-align:center">Prop the phone at waist height, step back ~2 m so your whole body shows. Cast to a TV for the full effect.</p>
+  </section>
+
+  <section class="sheet" id="cast" style="background:rgba(11,11,20,.96)">
+    <h1>Cast to TV</h1>
+    <p class="sub">Your phone stays under the TV as the camera; the TV shows the game.</p>
+    <div class="list">
+      <div class="row"><div class="ic" style="background:#0a84ff">1</div><div><b>Samsung / LG / Hisense / Sony / TCL</b><span>Android: swipe down → Smart View / Screen Cast → pick your TV. Same Wi-Fi.</span></div></div>
+      <div class="row"><div class="ic" style="background:#30d158">2</div><div><b>Chromecast / Google TV / Android TV</b><span>Google Home app → your TV → Cast my screen.</span></div></div>
+      <div class="row"><div class="ic" style="background:#8e8e93">3</div><div><b>iPhone</b><span>Control Center → Screen Mirroring → Apple TV or AirPlay TV (Samsung, LG, Sony, Vizio).</span></div></div>
+      <div class="row"><div class="ic" style="background:#ff9f0a">4</div><div><b>Older / non-smart TV</b><span>Plug in a cheap Miracast/Chromecast dongle or a USB-C→HDMI cable.</span></div></div>
+    </div>
+    <button class="btn" id="openCast">Open cast settings</button>
+    <button class="btn ghost" id="closeCast">Done</button>
+  </section>
+  <section class="sheet" id="results">
+    <p class="sub">Workout complete</p>
+    <div class="big" id="rCal">0</div>
+    <p class="sub">estimated kcal</p>
+    <div class="stats">
+      <div><b id="rCoins">0</b><span>Coins</span></div>
+      <div><b id="rDist">0 m</b><span>Distance</span></div>
+      <div><b id="rDodge">0</b><span>Dodges</span></div>
+      <div><b id="rJumps">0</b><span>Jumps + ducks</span></div>
+    </div>
+    <button class="btn" id="again">Run again</button>
+    <button class="btn ghost" id="toHome">Home</button>
+  </section>
+</div>
+
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+const $=id=>document.getElementById(id);
+
+/* ---------------- Sessions ---------------- */
+const SESSIONS=[
+ {name:"Quick Dash",desc:"3 min · easy",mins:3,speed:14,density:1,col:"#30d158",ic:"M13 2L4 14h7l-1 8 9-12h-7z"},
+ {name:"Subway Sprint",desc:"5 min · medium",mins:5,speed:17,density:1.3,col:"#0a84ff",ic:"M5 4h14v12H5zM5 11h14M8 20l-2 2M16 20l2 2M8 16v4M16 16v4"},
+ {name:"Cardio Burner",desc:"10 min · hard",mins:10,speed:19,density:1.6,col:"#ff375f",ic:"M12 2c3 4 6 6 6 11a6 6 0 01-12 0c0-3 2-5 3-7 1 2 2 3 3 3 0-3 0-5 0-7z"},
+ {name:"Endless Run",desc:"30 min · free run",mins:30,speed:16,density:1.2,col:"#bf5af2",ic:"M18 12a4 4 0 10-6-3.5A4 4 0 106 12a4 4 0 106 3.5 4 4 0 106-3.5z"},
+];
+SESSIONS.forEach(s=>{const b=document.createElement("button");b.className="row";
+ b.innerHTML=`<div class="ic" style="background:${s.col}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${s.ic}"/></svg></div><div><b>${s.name}</b><span>${s.desc}</span></div><div class="chev">›</div>`;
+ b.onclick=()=>startRun(s);$("sessions").appendChild(b)});
+let useCam=true;$("camSw").onclick=e=>{useCam=!useCam;e.currentTarget.classList.toggle("on",useCam)};
+const sheet=id=>{document.querySelectorAll(".sheet").forEach(s=>s.classList.toggle("on",s.id===id));$("hud").style.display=id?"none":"block"};
+
+/* ---------------- Three.js world ---------------- */
+const renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true});
+renderer.setPixelRatio(Math.min(2,devicePixelRatio));renderer.shadowMap.enabled=true;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x8fd3ff);scene.fog=new THREE.Fog(0x8fd3ff,40,120);
+const cam=new THREE.PerspectiveCamera(60,1,.1,200);
+scene.add(new THREE.HemisphereLight(0xffffff,0x6b8cff,1.1));
+const sun=new THREE.DirectionalLight(0xffffff,1.4);sun.position.set(6,14,6);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera,{left:-12,right:12,top:12,bottom:-12});scene.add(sun);scene.add(sun.target);
+function resize(){renderer.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;
+ cam.fov=cam.aspect<1?78:58;cam.updateProjectionMatrix()}
+addEventListener("resize",resize);resize();
+
+const LANE=2.4, SEG=20, NSEG=8;
+const M=c=>new THREE.MeshLambertMaterial({color:c});
+const mats={ground:M(0x9aa3ad),rail:M(0x5b4a3a),sleeper:M(0x7c5a3c),steel:M(0xd1d5db),wallA:M(0x6ec6ff),wallB:M(0xfde68a),
+ train:[M(0xef4444),M(0xfacc15),M(0x3b82f6),M(0x22c55e)],trainTop:M(0xe5e7eb),win:M(0x1e3a8a),barW:M(0xffffff),barR:M(0xef4444),coin:new THREE.MeshLambertMaterial({color:0xfacc15,emissive:0x8a5a00}),
+ skin:M(0xf2c29b),shirt:M(0x2563eb),pants:M(0x1f2937),cap:M(0xef4444),shoe:M(0xffffff),bld:[M(0xfca5a5),M(0xa5b4fc),M(0xfde68a),M(0x86efac),M(0xf9a8d4)]};
+
+// track segments (recycled)
+const segs=[];
+function makeSeg(){const g=new THREE.Group();
+ const base=new THREE.Mesh(new THREE.BoxGeometry(LANE*3+3,.4,SEG),mats.ground);base.position.y=-.2;base.receiveShadow=true;g.add(base);
+ for(let l=-1;l<=1;l++){for(const o of[-.55,.55]){const r=new THREE.Mesh(new THREE.BoxGeometry(.12,.15,SEG),mats.steel);r.position.set(l*LANE+o,.08,0);g.add(r)}
+  for(let z=-SEG/2+.5;z<SEG/2;z+=1.4){const s=new THREE.Mesh(new THREE.BoxGeometry(1.7,.08,.35),mats.sleeper);s.position.set(l*LANE,.02,z);s.receiveShadow=true;g.add(s)}}
+ for(const side of[-1,1]){const w=new THREE.Mesh(new THREE.BoxGeometry(.6,2.2,SEG),side<0?mats.wallA:mats.wallB);w.position.set(side*(LANE*1.5+1.6),1.1,0);g.add(w);
+  for(let i=0;i<3;i++){const h=5+Math.random()*12,b=new THREE.Mesh(new THREE.BoxGeometry(4,h,5.5),mats.bld[(Math.random()*5)|0]);b.position.set(side*(LANE*1.5+5+Math.random()*3),h/2,-SEG/2+3+i*6.5);g.add(b)}}
+ scene.add(g);return g}
+for(let i=0;i<NSEG;i++){const s=makeSeg();s.position.z=-i*SEG;segs.push(s)}
+
+// runner (blocky character)
+const runner=new THREE.Group();scene.add(runner);
+const part=(w,h,d,m,x,y,z,parent=runner)=>{const p=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);p.position.set(x,y,z);p.castShadow=true;parent.add(p);return p};
+const torso=part(.7,.8,.4,mats.shirt,0,1.35,0);
+const head=part(.5,.5,.5,mats.skin,0,2.0,0);part(.56,.16,.56,mats.cap,0,2.28,0);part(.5,.06,.3,mats.cap,0,2.22,-.35);
+const limb=(x,y,m,len)=>{const piv=new THREE.Group();piv.position.set(x,y,0);runner.add(piv);const l=part(.24,len,.24,m,0,-len/2,0,piv);l.castShadow=true;return piv};
+const armL=limb(-.48,1.7,mats.shirt,.75),armR=limb(.48,1.7,mats.shirt,.75),legL=limb(-.18,.95,mats.pants,.95),legR=limb(.18,.95,mats.pants,.95);
+[legL,legR].forEach(l=>part(.28,.14,.4,mats.shoe,0,-.95,-.06,l));
+runner.rotation.y=Math.PI;
+
+// obstacle pools
+const coinGeo=new THREE.CylinderGeometry(.35,.35,.08,20);
+function makeTrain(){const g=new THREE.Group(),L=12,c=mats.train[(Math.random()*4)|0];
+ const b=new THREE.Mesh(new THREE.BoxGeometry(2,2.9,L),c);b.position.y=1.6;b.castShadow=true;g.add(b);
+ const t=new THREE.Mesh(new THREE.BoxGeometry(1.8,.25,L-.4),mats.trainTop);t.position.y=3.15;g.add(t);
+ const f=new THREE.Mesh(new THREE.BoxGeometry(1.4,.9,.05),mats.win);f.position.set(0,2.2,L/2+.01);g.add(f);
+ for(const s of[-1,1])for(let z=-L/2+1.5;z<L/2-1;z+=2.2){const w=new THREE.Mesh(new THREE.BoxGeometry(.05,.7,1.4),mats.win);w.position.set(s*1.01,2.1,z);g.add(w)}
+ g.userData={type:"train",len:L};return g}
+function makeBar(high){const g=new THREE.Group();
+ for(const s of[-1,1]){const p=new THREE.Mesh(new THREE.BoxGeometry(.18,high?2.6:1,.18),mats.barW);p.position.set(s*.95,high?1.3:.5,0);g.add(p)}
+ for(let i=0;i<5;i++){const s=new THREE.Mesh(new THREE.BoxGeometry(.4,.45,.2),i%2?mats.barW:mats.barR);s.position.set(-.8+i*.4,high?2.1:.85,0);s.castShadow=true;g.add(s)}
+ if(high)for(let i=0;i<5;i++){const s=new THREE.Mesh(new THREE.BoxGeometry(.4,.45,.2),i%2?mats.barR:mats.barW);s.position.set(-.8+i*.4,2.55,0);g.add(s)}
+ g.userData={type:high?"high":"low",len:.4};return g}
+let obs=[], coins=[];
+
+/* ---------------- Audio (original) ---------------- */
+let ac,master,musicT=0,step=0,musicTimer;
+function audio(){ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume();if(!master){master=ac.createGain();master.gain.value=.5;master.connect(ac.destination)}}
+function tone(f,t,d,type="square",v=.08){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(master);o.start(t);o.stop(t+d+.02)}
+function kick(t){const o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+.12);g.gain.setValueAtTime(.7,t);g.gain.exponentialRampToValueAtTime(.001,t+.25);o.connect(g).connect(master);o.start(t);o.stop(t+.26)}
+const MEL=[76,79,81,79,76,74,72,74,76,79,84,83,81,79,76,79],BAS=[45,45,52,52,43,43,50,50];
+const hz=n=>440*2**((n-69)/12);
+function music(){const spb=60/128/2;while(musicT<ac.currentTime+.2){const s=step;
+ if(s%2===0)kick(musicT);tone(hz(BAS[(s>>2)%8]),musicT,spb*.9,"triangle",.12);if(s%2===0)tone(hz(MEL[(s>>1)%16]),musicT,spb*1.6,"square",.045);
+ musicT+=spb;step++}}
+const sfx={coin:()=>{const t=ac.currentTime;tone(1320,t,.07,"square",.06);tone(1760,t+.06,.1,"square",.06)},
+ jump:()=>{const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(700,t+.18);g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.2);o.connect(g).connect(master);o.start(t);o.stop(t+.22)},
+ hit:()=>{const t=ac.currentTime;tone(110,t,.3,"sawtooth",.15);tone(80,t+.05,.3,"sawtooth",.12)},
+ whoosh:()=>{const t=ac.currentTime;tone(500,t,.08,"sine",.06)}};
+
+/* ---------------- Pose control ---------------- */
+let landmarker=null,video=$("video"),stream=null,pose=null,lastVT=-1;
+const P={base:null,calib:[],lane:0,motion:0,prevKnees:null,state:"stand"};
+async function initPose(){if(landmarker)return;
+ const v=await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs");
+ const fs=await v.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+ landmarker=await v.PoseLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",delegate:"GPU"},runningMode:"VIDEO",numPoses:1})}
+async function startCam(){stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:640},height:{ideal:480}},audio:false});video.srcObject=stream;await video.play()}
+function stopCam(){stream?.getTracks().forEach(t=>t.stop());stream=null}
+function readPose(){
+ if(!landmarker||video.readyState<2||video.currentTime===lastVT)return;lastVT=video.currentTime;
+ const r=landmarker.detectForVideo(video,performance.now());pose=r.landmarks?.[0]||null;if(!pose)return;
+ const sh=(pose[11].y+pose[12].y)/2, hipX=1-(pose[23].x+pose[24].x)/2, torsoH=Math.abs((pose[23].y+pose[24].y)/2-sh)||.2;
+ if(!P.base){P.calib.push({sh,hipX,torsoH});if(P.calib.length>=30){const a=k=>P.calib.reduce((s,c)=>s+c[k],0)/P.calib.length;P.base={sh:a("sh"),hipX:a("hipX"),t:a("torsoH")}}return}
+ const dy=(sh-P.base.sh)/P.base.t, dx=(hipX-P.base.hipX)/P.base.t;
+ // lanes: lean/step sideways
+ const want=dx>.35?1:dx<-.35?-1:0; if(want!==P.lane){P.lane=want;setLane(want)}
+ // jump / duck relative to calibrated shoulder height
+ if(dy<-.22)doJump(); else if(dy>.35)doDuck();
+ // run-in-place energy from knee movement
+ const k=[pose[25].y,pose[26].y,pose[27].y,pose[28].y];
+ if(P.prevKnees){const e=k.reduce((s,v,i)=>s+Math.abs(v-P.prevKnees[i]),0)/P.base.t;P.motion=P.motion*.85+Math.min(1,e*6)*.15}
+ P.prevKnees=k;
+ // slow drift of baseline to follow user
+ if(Math.abs(dy)<.12){P.base.sh+= (sh-P.base.sh)*.01}
+}
+function drawPip(){const c=$("pipc").getContext("2d"),W=208,H=276;
+ if(video.readyState>=2){const vw=video.videoWidth,vh=video.videoHeight,sc=Math.max(W/vw,H/vh);c.save();c.translate(W,0);c.scale(-1,1);c.drawImage(video,(W-vw*sc)/2,(H-vh*sc)/2,vw*sc,vh*sc);c.restore();
+  if(pose){c.strokeStyle="#4ade80";c.lineWidth=4;c.lineCap="round";const vw2=vw*sc,vh2=vh*sc,ox=(W-vw2)/2,oy=(H-vh2)/2,pt=i=>[W-(ox+pose[i].x*vw2),oy+pose[i].y*vh2];
+   [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]].forEach(([a,b])=>{c.beginPath();c.moveTo(...pt(a));c.lineTo(...pt(b));c.stroke()})}}}
+
+
+/* ---------------- Casting / TV mode ---------------- */
+let castFrom=null;
+document.querySelectorAll(".castBtn").forEach(b=>b.onclick=()=>{castFrom=document.querySelector(".sheet.on")?.id||null;
+ if(G&&G.started&&!G.over){G.paused=true}document.querySelectorAll(".sheet").forEach(x=>x.classList.toggle("on",x.id==="cast"))});
+$("closeCast").onclick=()=>{if(castFrom)sheet(castFrom);else{$("cast").classList.remove("on");if(G)G.paused=false;last=performance.now()}};
+$("openCast").onclick=async()=>{const C=window.Capacitor;
+ try{if(C?.Plugins?.CastHelper){await C.Plugins.CastHelper.open();return}}catch(e){}
+ $("openCast").textContent=/iPhone|iPad/.test(navigator.userAgent)?"Use Control Center → Screen Mirroring":"Swipe down → Smart View / Cast"};
+async function tvMode(){try{await document.documentElement.requestFullscreen?.({navigationUI:"hide"})}catch(e){}
+ try{await screen.orientation?.lock?.("landscape")}catch(e){}
+ try{G.wake=await navigator.wakeLock?.request("screen")}catch(e){}}
+/* ---------------- Game state ---------------- */
+let G=null,raf=0,last=0;
+function setLane(l){if(!G||G.over)return;const n=Math.max(-1,Math.min(1,l));if(n!==G.lane){G.lane=n;G.dodges++;sfx.whoosh()}}
+function doJump(){if(!G||G.y>0.01||G.over)return;G.vy=11;G.duck=0;G.moves++;sfx.jump()}
+function doDuck(){if(!G||G.over)return;if(G.duck<=0)G.moves++;G.duck=.75;if(G.y>0)G.vy=-18}
+
+async function startRun(s){
+ audio();sheet(null);tvMode();
+ obs.forEach(o=>scene.remove(o));coins.forEach(c=>scene.remove(c));obs=[];coins=[];
+ G={s,t:0,dist:0,coins:0,lane:0,x:0,y:0,vy:0,duck:0,stun:0,dodges:0,moves:0,spawnZ:-40,over:false,started:false,cam:false,cd:3};
+ P.base=null;P.calib=[];P.lane=0;P.motion=0;
+ $("pip").style.display="none";$("status").textContent="Loading…";
+ $("hint").textContent=useCam?"":"Swipe ← → to switch, ↑ jump, ↓ duck (or arrow keys)";
+ if(useCam){try{await startCam();await initPose();G.cam=true;$("pip").style.display="block";$("hint").textContent="Run in place · lean to switch lanes · jump · squat to duck"}
+  catch(e){stopCam();$("hint").textContent="Camera unavailable — swipe to play"}}
+ musicT=ac.currentTime+.1;step=0;clearInterval(musicTimer);musicTimer=setInterval(music,50);
+ last=performance.now();cancelAnimationFrame(raf);loop();
+}
+function endRun(){G.over=true;clearInterval(musicTimer);stopCam();cancelAnimationFrame(raf);
+ const kcal=Math.round(G.t/60*(G.cam?11:5)+G.moves*.3);
+ $("rCal").textContent=kcal;$("rCoins").textContent=G.coins;$("rDist").textContent=Math.round(G.dist)+" m";$("rDodge").textContent=G.dodges;$("rJumps").textContent=G.moves;sheet("results")}
+$("quit").onclick=()=>{G.over=true;clearInterval(musicTimer);stopCam();cancelAnimationFrame(raf);sheet("home")};
+$("again").onclick=()=>startRun(G.s);$("toHome").onclick=()=>sheet("home");
+
+function spawnRow(z){
+ const d=G.s.density,lanes=[-1,0,1].sort(()=>Math.random()-.5);
+ const n=Math.random()<.35*d?2:1;
+ for(let i=0;i<n;i++){const l=lanes[i],r=Math.random();
+  const o=r<.4?makeTrain():makeBar(r<.7);o.position.set(l*LANE,0,z-(o.userData.type==="train"?6:0));o.userData.lane=l;scene.add(o);obs.push(o)}
+ const free=lanes[n]??lanes[2];
+ for(let i=0;i<6;i++){const c=new THREE.Mesh(coinGeo,mats.coin);c.rotation.x=Math.PI/2;c.position.set(free*LANE,1,z+6+i*1.6);c.userData.lane=free;scene.add(c);coins.push(c)}
+}
+
+function loop(){raf=requestAnimationFrame(loop);
+ const now=performance.now(),dt=Math.min(.05,(now-last)/1000);last=now;
+ if(G.paused){render(0,0);return}
+ if(G.cam){readPose();drawPip()}
+ // countdown / calibration
+ if(!G.started){
+  if(G.cam&&!P.base){$("status").textContent=pose?"Hold still… "+Math.round(P.calib.length/30*100)+"%":"Step back so your whole body shows";render(dt,0);return}
+  G.cd-=dt;$("status").textContent=G.cd>0?Math.ceil(G.cd):"RUN!";if(G.cd<=-.5){G.started=true;$("status").textContent=""}
+  render(dt,0);return}
+ G.t+=dt;const total=G.s.mins*60;if(G.t>=total){endRun();return}
+ // speed: with camera, you must actually run in place
+ const effort=G.cam?Math.max(.25,Math.min(1,P.motion*1.6)):1;
+ const sp=G.s.speed*(1+G.t/total*.35)*effort*(G.stun>0?.4:1);
+ G.dist+=sp*dt;G.stun=Math.max(0,G.stun-dt);
+ // player physics
+ G.x+=(G.lane*LANE-G.x)*Math.min(1,dt*12);
+ G.vy-=30*dt;G.y=Math.max(0,G.y+G.vy*dt);if(G.y===0)G.vy=0;
+ G.duck=Math.max(0,G.duck-dt);
+ // world scroll
+ const dz=sp*dt;
+ segs.forEach(s=>{s.position.z+=dz;if(s.position.z>SEG)s.position.z-=SEG*NSEG});
+ G.spawnZ+=dz;if(G.spawnZ>-60){spawnRow(-110);G.spawnZ-=Math.max(14,30-8*G.s.density)}
+ let cue=null,cueD=1e9;
+ obs=obs.filter(o=>{o.position.z+=dz;const u=o.userData,half=u.type==="train"?u.len/2:.3;
+  const front=o.position.z+half;
+  if(u.lane===G.lane&&front>-22&&front<0&&-front<cueD){cueD=-front;cue=u.type}
+  if(!u.hit&&Math.abs(o.position.x-G.x)<1.1&&o.position.z-half<.4&&o.position.z+half>-.4){
+   const ok=(u.type==="low"&&G.y>.7)||(u.type==="high"&&G.duck>0);
+   if(!ok){u.hit=true;G.stun=1.2;sfx.hit();flashStatus("Ouch!");if(u.type==="train"){G.lane=G.lane===0?(Math.random()<.5?-1:1):0}}}
+  if(o.position.z>12){scene.remove(o);return false}return true});
+ coins=coins.filter(c=>{c.position.z+=dz;c.rotation.z+=dt*4;
+  if(Math.abs(c.position.x-G.x)<.9&&Math.abs(c.position.z)<.7&&G.y<1.8){G.coins++;sfx.coin();scene.remove(c);return false}
+  if(c.position.z>8){scene.remove(c);return false}return true});
+ // cue bubble (like "DUCK" prompt)
+ const cueEl=$("cue");
+ if(cue){const map={high:["DUCK",duckIc],low:["JUMP",jumpIc],train:[G.lane<=0?"MOVE ▶":"◀ MOVE",moveIc]};$("cueTx").textContent=map[cue][0];if(cueEl.dataset.k!==cue){$("cueIc").innerHTML=map[cue][1];cueEl.dataset.k=cue}cueEl.style.opacity=1}
+ else cueEl.style.opacity=0;
+ // HUD
+ $("prog").style.width=(G.t/total*100)+"%";$("coins").textContent=G.coins;
+ const r=total-G.t;$("time").textContent=Math.floor(r/60)+":"+String(Math.floor(r%60)).padStart(2,"0");
+ render(dt,sp);
+}
+const svg=p=>`<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const duckIc=svg('<circle cx="12" cy="8" r="2.2"/><path d="M7 13c2-2 8-2 10 0M8 13l-1 6M16 13l1 6M9 17h6"/>');
+const jumpIc=svg('<circle cx="12" cy="4" r="2"/><path d="M6 8l6 2 6-2M12 10v5l-4 3M12 15l4 3M12 22v-1"/>');
+const moveIc=svg('<path d="M4 12h16M15 7l5 5-5 5M9 7l-5 5 5 5"/>');
+let st;function flashStatus(t){$("status").textContent=t;clearTimeout(st);st=setTimeout(()=>{if(G?.started)$("status").textContent=""},700)}
+
+let phase=0;
+function render(dt,sp){
+ phase+=dt*(4+sp*.45);
+ const ducking=G&&G.duck>0;
+ runner.position.set(G?G.x:0,G?G.y:0,0);
+ runner.scale.y=ducking?.55:1;
+ const sw=G&&G.y>0?.3:Math.sin(phase)*.9*(sp>0?1:.15);
+ legL.rotation.x=sw;legR.rotation.x=-sw;armL.rotation.x=-sw*.8;armR.rotation.x=sw*.8;
+ if(G&&G.y>0){armL.rotation.x=armR.rotation.x=-2.6}
+ runner.visible=!(G&&G.stun>0&&Math.floor(G.stun*10)%2);
+ const cx=G?G.x*.6:0;
+ cam.position.set(cx,4.2,7.2);cam.lookAt(cx,1.4,-6);
+ sun.position.set(cx+6,14,6);sun.target.position.set(cx,0,-4);
+ renderer.render(scene,cam);
+}
+render(0,0);
+
+/* ---------------- Touch / keyboard fallback ---------------- */
+let sx=0,sy=0;
+addEventListener("pointerdown",e=>{sx=e.clientX;sy=e.clientY});
+addEventListener("pointerup",e=>{if(!G||!G.started)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<30)return;
+ if(Math.abs(dx)>Math.abs(dy))setLane(G.lane+(dx>0?1:-1));else dy<0?doJump():doDuck()});
+addEventListener("keydown",e=>{if(!G||!G.started)return;({ArrowLeft:()=>setLane(G.lane-1),ArrowRight:()=>setLane(G.lane+1),ArrowUp:doJump,ArrowDown:doDuck,a:()=>setLane(G.lane-1),d:()=>setLane(G.lane+1),w:doJump,s:doDuck})[e.key]?.()});
+</script>
+</body>
+</html>
