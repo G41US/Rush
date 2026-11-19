@@ -10,6 +10,10 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - run: npm install
+      - name: Bundle body tracker offline
+        run: |
+          mkdir -p www/mp && cp node_modules/@mediapipe/tasks-vision/vision_bundle.mjs www/mp/ && cp -r node_modules/@mediapipe/tasks-vision/wasm www/mp/
+          curl -sSL -o www/mp/pose_landmarker_lite.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task
       - run: npx cap add android
       - name: Camera permission + cast plugin
         run: |

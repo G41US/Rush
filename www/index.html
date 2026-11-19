@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b0b14">
 <title>Rail Rush Workout</title>
 <style>
-:root{--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px)}
+:root{--st:max(env(safe-area-inset-top,0px),var(--stmin,0px));--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px)}
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent;user-select:none}
 html,body{height:100%;background:#0b0b14;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;overflow:hidden;touch-action:none}
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block}
@@ -107,6 +107,7 @@ h1{font-size:32px;font-weight:800;letter-spacing:-.5px}
   </section>
 </div>
 
+<script>if(/iPhone|iPad/.test(navigator.userAgent)&&window.Capacitor)document.documentElement.style.setProperty("--stmin","50px")</script>
 <script type="module">
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 const $=id=>document.getElementById(id);
@@ -125,8 +126,8 @@ let useCam=true;$("camSw").onclick=e=>{useCam=!useCam;e.currentTarget.classList.
 const sheet=id=>{document.querySelectorAll(".sheet").forEach(s=>s.classList.toggle("on",s.id===id));$("hud").style.display=id?"none":"block"};
 
 /* ---------------- Three.js world ---------------- */
-const renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true});
-renderer.setPixelRatio(Math.min(2,devicePixelRatio));renderer.shadowMap.enabled=true;
+const renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:!/Android|iPhone|iPad/.test(navigator.userAgent),powerPreference:"high-performance"});
+const MOBILE=/Android|iPhone|iPad/.test(navigator.userAgent);renderer.setPixelRatio(Math.min(MOBILE?1.25:2,devicePixelRatio));renderer.shadowMap.enabled=!MOBILE;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x8fd3ff);scene.fog=new THREE.Fog(0x8fd3ff,40,120);
 const cam=new THREE.PerspectiveCamera(60,1,.1,200);
 scene.add(new THREE.HemisphereLight(0xffffff,0x6b8cff,1.1));
@@ -194,16 +195,23 @@ const sfx={coin:()=>{const t=ac.currentTime;tone(1320,t,.07,"square",.06);tone(1
  whoosh:()=>{const t=ac.currentTime;tone(500,t,.08,"sine",.06)}};
 
 /* ---------------- Pose control ---------------- */
-let landmarker=null,video=$("video"),stream=null,pose=null,lastVT=-1;
+let lastDet=0,landmarker=null,video=$("video"),stream=null,pose=null,lastVT=-1;
 const P={base:null,calib:[],lane:0,motion:0,prevKnees:null,state:"stand"};
 async function initPose(){if(landmarker)return;
- const v=await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs");
- const fs=await v.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
- landmarker=await v.PoseLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",delegate:"GPU"},runningMode:"VIDEO",numPoses:1})}
+ const VER="0.10.14",cdn=`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VER}`;
+ const tryLoad=async(u)=>{try{return await import(u)}catch(e){return null}};
+ const v=(await tryLoad("./mp/vision_bundle.mjs"))||(await tryLoad(cdn+"/vision_bundle.mjs"));
+ if(!v)throw new Error("tracker script");
+ const local=!!(await fetch("./mp/wasm/vision_wasm_internal.js",{method:"HEAD"}).then(r=>r.ok).catch(()=>false));
+ const fs=await v.FilesetResolver.forVisionTasks(local?"./mp/wasm":cdn+"/wasm");
+ const model=local?"./mp/pose_landmarker_lite.task":"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+ for(const delegate of ["GPU","CPU"]){try{landmarker=await v.PoseLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:model,delegate},runningMode:"VIDEO",numPoses:1});return}catch(e){}}
+ throw new Error("tracker init")}
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
 async function startCam(){stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:640},height:{ideal:480}},audio:false});video.srcObject=stream;await video.play()}
 function stopCam(){stream?.getTracks().forEach(t=>t.stop());stream=null}
 function readPose(){
- if(!landmarker||video.readyState<2||video.currentTime===lastVT)return;lastVT=video.currentTime;
+ const tnow=performance.now();if(!landmarker||video.readyState<2||video.currentTime===lastVT||tnow-lastDet<66)return;lastVT=video.currentTime;lastDet=tnow;
  const r=landmarker.detectForVideo(video,performance.now());pose=r.landmarks?.[0]||null;if(!pose)return;
  const sh=(pose[11].y+pose[12].y)/2, hipX=1-(pose[23].x+pose[24].x)/2, torsoH=Math.abs((pose[23].y+pose[24].y)/2-sh)||.2;
  if(!P.base){P.calib.push({sh,hipX,torsoH});if(P.calib.length>=30){const a=k=>P.calib.reduce((s,c)=>s+c[k],0)/P.calib.length;P.base={sh:a("sh"),hipX:a("hipX"),t:a("torsoH")}}return}
@@ -249,7 +257,7 @@ async function startRun(s){
  P.base=null;P.calib=[];P.lane=0;P.motion=0;
  $("pip").style.display="none";$("status").textContent="Loading…";
  $("hint").textContent=useCam?"":"Swipe ← → to switch, ↑ jump, ↓ duck (or arrow keys)";
- if(useCam){try{await startCam();await initPose();G.cam=true;$("pip").style.display="block";$("hint").textContent="Run in place · lean to switch lanes · jump · squat to duck"}
+ if(useCam){try{$("status").textContent="Starting camera…";await withTimeout(startCam(),10000);$("status").textContent="Loading body tracker…";await withTimeout(initPose(),20000);G.cam=true;$("pip").style.display="block";$("hint").textContent="Run in place · lean to switch lanes · jump · squat to duck"}
   catch(e){stopCam();$("hint").textContent="Camera unavailable — swipe to play"}}
  musicT=ac.currentTime+.1;step=0;clearInterval(musicTimer);musicTimer=setInterval(music,50);
  last=performance.now();cancelAnimationFrame(raf);loop();
